@@ -1,0 +1,106 @@
+
+#include "mbed.h"
+#include "SDFileSystem.h"
+#include "LCD_DISCO_F746NG.h"
+#include <stdio.h>
+
+DigitalOut myled(LED1);
+SDFileSystem sd("sd");
+LCD_DISCO_F746NG lcd;
+
+uint8_t text[30]; 
+uint32_t fileIndex = 0;
+uint8_t filename[30];
+
+int main()
+ { 
+    sd.mount();
+    lcd.DisplayStringAt(0, LINE(5), (uint8_t *)"Starting Filetest", CENTER_MODE); 
+    
+    // Read datalog file and update index 
+    FILE * fp = fopen("/sd/datalog.txt", "r");
+    if (fp == NULL)
+      {
+        lcd.ClearStringLine(6);
+        lcd.DisplayStringAt(0, LINE(6), (uint8_t *)"couldn't open file for read", CENTER_MODE);
+        wait(0.5);  
+      }
+    else
+      {
+        char buf[8];
+        fgets(buf, sizeof(buf), fp);
+        fileIndex = strtol(buf, NULL, 10);
+        sprintf((char*)text, "%d", fileIndex);
+        lcd.ClearStringLine(6);
+        lcd.DisplayStringAt(0, LINE(6), (uint8_t *)&text, CENTER_MODE);
+        fileIndex++;
+        sprintf((char*)filename, "/sd/data%d.txt", fileIndex);
+        lcd.ClearStringLine(6);
+        lcd.DisplayStringAt(0, LINE(6), (uint8_t *)filename, CENTER_MODE);
+        fclose(fp);
+        wait(0.1);
+      }
+            
+    // Write new index to datalog file 
+    fp = fopen("/sd/datalog.txt", "w");
+    wait(0.1);
+    if (fp == NULL)
+      {
+        lcd.ClearStringLine(6);
+        lcd.DisplayStringAt(0, LINE(6), (uint8_t *)"couldn't open datalog for update", CENTER_MODE);
+        wait(0.5);  
+      }
+    else
+      {        
+        fprintf(fp, "%d\n", fileIndex);
+        wait(0.1);
+        fclose(fp);
+        wait(0.1);  
+        lcd.DisplayStringAt(0, LINE(6), (uint8_t *)"datalog updated", CENTER_MODE);
+          
+      }
+      
+    // Create new data file 
+    fp = fopen((char*)filename, "a");
+    wait(0.1);
+    if (fp == NULL)
+      {
+        lcd.ClearStringLine(6);
+        lcd.DisplayStringAt(0, LINE(6), (uint8_t *)"couldn't open new file for write", CENTER_MODE);  
+      }
+    else
+      {            
+        fprintf(fp, "Datafile %d\n", fileIndex);
+        wait(0.1); 
+        lcd.DisplayStringAt(0, LINE(6), (uint8_t *)"datafile created", CENTER_MODE);
+        fclose(fp);
+        wait(0.1);
+      }
+     for(int i=0;i<10;i++)
+       { 
+         fp = fopen((char*)filename, "a");
+         wait(0.1);
+         if (fp == NULL)
+          {
+             lcd.ClearStringLine(6);
+             lcd.DisplayStringAt(0, LINE(6), (uint8_t *)"couldn't open file for append", CENTER_MODE);
+          }
+         else
+          {               
+            fprintf(fp, "Appended %d\n", fileIndex);
+            wait(0.1);
+            lcd.DisplayStringAt(0, LINE(6), (uint8_t *)"datafile appended", CENTER_MODE);
+            fclose(fp);
+            wait(0.1);
+          }
+        }
+      
+    while(1)
+      {
+		wait(1); 
+		lcd.ClearStringLine(6);
+		lcd.DisplayStringAt(0, LINE(6), (uint8_t *)"All Done", CENTER_MODE);
+	  }
+  }
+  
+
